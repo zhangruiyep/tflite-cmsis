@@ -1,0 +1,12 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+# Add source code
+src = Glob('*.cc')
+inc = [cwd]
+
+group = DefineGroup('Applications', src, depend = [''], CPPPATH = inc)
+
+Return('group')
