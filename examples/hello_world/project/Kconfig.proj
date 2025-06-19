@@ -2,3 +2,7 @@ config CUSTOM_MEM_MAP
     bool 
 	select custom_mem_map
 	default y    
+
+config TF_MAIN_STACK_SIZE    
+    int "TFLM main stack size"
+	default 131072

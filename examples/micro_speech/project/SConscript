@@ -6,19 +6,10 @@ objs = []
 list = os.listdir(cwd)
 Import('SIFLI_SDK')
 
+# Add application common code
+objs.extend(SConscript(cwd+'/../../common/SConscript', variant_dir="common", duplicate=0))
+
 # Add application code
-objs.extend(SConscript(cwd+'/../SConscript', variant_dir="hello_world", duplicate=0))
-
-# Add signal
-objs.extend(SConscript(os.path.join(SIFLI_SDK,'../signal/SConscript'),variant_dir="signal", duplicate=0))
-
-# Add tensorflow
-objs.extend(SConscript(os.path.join(SIFLI_SDK,'../tensorflow/SConscript'), variant_dir="tensorflow", duplicate=0))
-
-# Add tensorflow third party
-objs.extend(SConscript(os.path.join(SIFLI_SDK,'../third_party/SConscript'), variant_dir="third_party", duplicate=0))
-
-# Add SDK
-objs.extend(SConscript(os.path.join(SIFLI_SDK, 'SConscript'), variant_dir="sifli_sdk", duplicate=0))
+objs.extend(SConscript(cwd+'/../SConscript', variant_dir="micro_speech", duplicate=0))
 
 Return('objs')

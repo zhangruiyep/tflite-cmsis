@@ -30,6 +30,9 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+
+extern "C" int tf_main(int argc, char * argv [ ]);
+#define main tf_main
 #include "tensorflow/lite/micro/testing/micro_test.h"
 
 namespace {
