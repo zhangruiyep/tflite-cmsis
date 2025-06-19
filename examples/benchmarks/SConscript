@@ -1,0 +1,23 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+# Add source code
+if GetDepend('BENCHMARK_KW'):
+    src = Glob("keyword_benchmark.cc")
+elif GetDepend('BENCHMARK_KW_INT8'):
+    src = Glob("keyword_benchmark_8bit.cc")
+elif GetDepend('BENCHMARK_PD'):
+    src = Glob("person_detection_benchmark.cc")
+else:
+    print("Not supported")
+    exit()
+    
+src += Glob('models/*.cc')
+src += Glob('testdata/*.cc')
+inc = [cwd]
+
+group = DefineGroup('Applications', src, depend = [''], CPPPATH = inc)
+
+Return('group')

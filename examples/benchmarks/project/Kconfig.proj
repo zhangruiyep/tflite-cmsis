@@ -1,0 +1,19 @@
+config CUSTOM_MEM_MAP
+    bool 
+	select custom_mem_map
+	default y    
+
+config TF_MAIN_STACK_SIZE    
+    int "TFLM main stack size"
+	default 131072
+    
+choice 
+    prompt "select benchmark app"
+    default BENCHMARK_KW
+    config BENCHMARK_KW
+        bool "Keyword detection"
+    config BENCHMARK_KW_INT8
+        bool "Keyword detection 8bit"
+    config BENCHMARK_PD
+        bool "Person detection"
+endchoice    
