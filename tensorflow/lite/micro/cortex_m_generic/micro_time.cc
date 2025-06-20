@@ -28,52 +28,16 @@ namespace tflite {
 // Stub functions for the project_generation target since these will be replaced
 // by the target-specific implementation in the overall infrastructure that the
 // TFLM project generation will be a part of.
-uint32_t ticks_per_second() { return 0; }
+uint32_t ticks_per_second() { return 1000; }
 uint32_t GetCurrentTimeTicks() { return 0; }
 
 #else
 
-uint32_t ticks_per_second() { return 0; }
+uint32_t ticks_per_second() { return 1000; }
 
+extern "C" uint32_t rt_tick_get(void);
 uint32_t GetCurrentTimeTicks() {
-  static bool is_initialized = false;
-
-  if (!is_initialized) {
-#if (!defined(TF_LITE_STRIP_ERROR_STRINGS) && !defined(ARMCM0) && \
-     !defined(ARMCM0plus))
-#ifdef ARM_MODEL_USE_PMU_COUNTERS
-    ARM_PMU_Enable();
-    DCB->DEMCR |= DCB_DEMCR_TRCENA_Msk;
-
-    ARM_PMU_CYCCNT_Reset();
-    ARM_PMU_CNTR_Enable(PMU_CNTENSET_CCNTR_ENABLE_Msk);
-
-#else
-#ifdef ARMCM7
-    DWT->LAR = 0xC5ACCE55;
-#endif
-    DCB->DEMCR |= DCB_DEMCR_TRCENA_Msk;
-
-    // Reset and DWT cycle counter.
-    DWT->CYCCNT = 0;
-    DWT->CTRL |= 1UL;
-
-#endif
-#endif
-
-    is_initialized = true;
-  }
-
-#if (!defined(TF_LITE_STRIP_ERROR_STRINGS) && !defined(ARMCM0) && \
-     !defined(ARMCM0plus))
-#ifdef ARM_MODEL_USE_PMU_COUNTERS
-  return ARM_PMU_Get_CCNTR();
-#else
-  return DWT->CYCCNT;
-#endif
-#else
-  return 0;
-#endif
+    return rt_tick_get();
 }
 
 #endif  // defined(PROJECT_GENERATION)
