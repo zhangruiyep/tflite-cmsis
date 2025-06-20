@@ -1,0 +1,16 @@
+config CUSTOM_MEM_MAP
+    bool 
+	select custom_mem_map
+	default y    
+
+config TF_MAIN_STACK_SIZE    
+    int "TFLM main stack size"
+	default 131072
+choice 
+    prompt "select project"
+    default MEM_FP_BASE
+    config MEM_FP_BASE
+        bool "base line"
+    config MEM_FP_INTP
+        bool "Intepreter"
+endchoice    	

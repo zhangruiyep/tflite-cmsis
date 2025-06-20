@@ -1,0 +1,21 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+# Add source code
+if GetDepend('MEM_FP_BASE'):
+    src = Glob("baseline_memory_footprint.cc")
+elif GetDepend('MEM_FP_INTP'):
+    src = Glob("interpreter_memory_footprint.cc")
+else:
+    print("Not supported")
+    exit()
+
+src += Glob('models/*.cc')
+
+inc = [cwd]
+
+group = DefineGroup('Applications', src, depend = [''], CPPPATH = inc)
+
+Return('group')
