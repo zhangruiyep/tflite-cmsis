@@ -54,6 +54,10 @@ constexpr int kAudioSampleStrideCount =
 using MicroSpeechOpResolver = tflite::MicroMutableOpResolver<6>;
 using AudioPreprocessorOpResolver = tflite::MicroMutableOpResolver<19>;
 
+static tflite::MicroInterpreter * g_interpreter;
+static MicroSpeechOpResolver op_resolver;
+
+
 TfLiteStatus RegisterOps(MicroSpeechOpResolver& op_resolver) {
   TF_LITE_ENSURE_STATUS(op_resolver.AddReshape());
   TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
@@ -103,9 +107,10 @@ TfLiteStatus GenerateFeatures(const int16_t* data,
     for (size_t i = 0; i < kFeatureCount; ++i) {
         auto mfccAudioData = std::vector<float>(
                 audioData.data() + i*MFCC_WINDOW_STRIDE,  // 使用data()获取指针
-                audioData.data() + (i+1)*MFCC_WINDOW_STRIDE
-        );        
-        MicroPrintf("GenerateFeatures 3, %d, %f, %f",i, quantScale, quantOffset);
+                audioData.data() + i*MFCC_WINDOW_STRIDE + MFCC_WINDOW_LEN
+        );
+        
+        //MicroPrintf("GenerateFeatures 3, %d, %f, %f",i, quantScale, quantOffset);
         auto mfcc = mfccInst->MfccComputeQuant<int8_t>(mfccAudioData, quantScale, quantOffset);
 
         for (size_t j = 0; j < mfcc.size() && j < 10; ++j) {
@@ -115,29 +120,43 @@ TfLiteStatus GenerateFeatures(const int16_t* data,
     return kTfLiteOk;
 }
 
-TfLiteStatus LoadMicroSpeechModelAndPerformInference(
-    const int16_t* audio_data, const size_t audio_data_size, const char* expected_label) 
+TfLiteStatus LoadMicroSpeechModel(    ) 
 {
     // Map the model into a usable data structure. This doesn't involve any
     // copying or parsing, it's a very lightweight operation.
     const tflite::Model* model =
-      tflite::GetModel(g_micro_speech_quantized_model_data);
+    tflite::GetModel(g_micro_speech_quantized_model_data);
     TF_LITE_MICRO_EXPECT(model->version() == TFLITE_SCHEMA_VERSION);
     TF_LITE_MICRO_CHECK_FAIL();
 
-    MicroSpeechOpResolver op_resolver;
     TF_LITE_MICRO_EXPECT(RegisterOps(op_resolver) == kTfLiteOk);
     TF_LITE_MICRO_CHECK_FAIL();
 
-    tflite::MicroInterpreter interpreter(model, op_resolver, g_arena, kArenaSize);
+    tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize);
 
-    TF_LITE_MICRO_EXPECT(interpreter.AllocateTensors() == kTfLiteOk);
+    TF_LITE_MICRO_EXPECT(interpreter->AllocateTensors() == kTfLiteOk);
     TF_LITE_MICRO_CHECK_FAIL();
 
     MicroPrintf("kws model arena size = %u",
-              interpreter.arena_used_bytes());
+            interpreter->arena_used_bytes());
+    g_interpreter=interpreter;
+    return kTfLiteOk;
+}
 
-    TfLiteTensor* input = interpreter.input(0);
+
+TfLiteStatus UnloadModel(    ) 
+{
+    delete g_interpreter;
+    g_interpreter = nullptr;
+    
+    return kTfLiteOk;
+}
+
+TfLiteStatus PerformInference(
+    const int16_t* audio_data, const size_t audio_data_size, const char* expected_label) 
+{
+  
+    TfLiteTensor* input = g_interpreter->input(0);
     TF_LITE_MICRO_EXPECT(input != nullptr);
     TF_LITE_MICRO_CHECK_FAIL();
     // check input shape is compatible with our feature data size
@@ -145,7 +164,7 @@ TfLiteStatus LoadMicroSpeechModelAndPerformInference(
                           input->dims->data[input->dims->size - 1]);
     TF_LITE_MICRO_CHECK_FAIL();
     
-    TfLiteTensor* output = interpreter.output(0);
+    TfLiteTensor* output = g_interpreter->output(0);
     TF_LITE_MICRO_EXPECT(output != nullptr);
     TF_LITE_MICRO_CHECK_FAIL();
     // check output shape is compatible with our number of prediction categories
@@ -161,7 +180,7 @@ TfLiteStatus LoadMicroSpeechModelAndPerformInference(
 
     std::copy_n(&m_features[0][0], kFeatureElementCount,
               tflite::GetTensorData<int8_t>(input));
-    TF_LITE_MICRO_EXPECT(interpreter.Invoke() == kTfLiteOk);
+    TF_LITE_MICRO_EXPECT(g_interpreter->Invoke() == kTfLiteOk);
     TF_LITE_MICRO_CHECK_FAIL();
 
     // Dequantize output values
@@ -190,13 +209,17 @@ TfLiteStatus LoadMicroSpeechModelAndPerformInference(
 TfLiteStatus TestAudioSample(const char* label, const int16_t* audio_data,
                              const size_t audio_data_size) {
   TF_LITE_ENSURE_STATUS(
-      LoadMicroSpeechModelAndPerformInference(audio_data, audio_data_size,  label));
+      PerformInference(audio_data, audio_data_size,  label));
   return kTfLiteOk;
 }
 
 }  // namespace
 
 TF_LITE_MICRO_TESTS_BEGIN
+
+TF_LITE_MICRO_TEST(Init) {
+  LoadMicroSpeechModel();
+}
 
 TF_LITE_MICRO_TEST(NoTest) {
   TestAudioSample("no", g_no_1000ms_audio_data, g_no_1000ms_audio_data_size);
@@ -214,6 +237,10 @@ TF_LITE_MICRO_TEST(SilenceTest) {
 TF_LITE_MICRO_TEST(NoiseTest) {
   TestAudioSample("unknown", g_noise_1000ms_audio_data,
                   g_noise_1000ms_audio_data_size);
+}
+
+TF_LITE_MICRO_TEST(DeInit) {
+  UnloadModel();
 }
 
 TF_LITE_MICRO_TESTS_END

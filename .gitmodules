@@ -1,3 +1,6 @@
 [submodule "SiFli-SDK"]
 	path = SiFli-SDK
 	url = git@github.com:OpenSiFli/SiFli-SDK.git
+[submodule "third_party/armnn"]
+	path = third_party/armnn
+	url = git@github.com:ARM-software/armnn.git

@@ -5,23 +5,15 @@ cwd = GetCurrentDir()
 
 # Add source code
 src = Glob('*.c')
+src += Glob('*.cc')
 inc = [cwd]
 Import('SIFLI_SDK')
 
-CPPDEFINES = ['CMSIS_DEVICE_ARM_CORTEX_M_XX_HEADER_FILE=\"<register.h>\"', 'CMSIS_NN']
+CPPDEFINES = ['CMSIS_DEVICE_ARM_CORTEX_M_XX_HEADER_FILE=\"<register.h>\"', 'CMSIS_NN', 'ARM_DSP']
 
 group = DefineGroup('Applications', src, depend = [''], CPPPATH = inc, CPPDEFINES=CPPDEFINES)
 
-group.extend(SConscript(os.path.join(SIFLI_SDK,'../SConscript'),variant_dir="tflite", duplicate=0))
-
-# Add signal
-#group.extend(SConscript(os.path.join(SIFLI_SDK,'../signal/SConscript'),variant_dir="signal", duplicate=0))
-
-# Add tensorflow
-#group.extend(SConscript(os.path.join(SIFLI_SDK,'../tensorflow/SConscript'), variant_dir="tensorflow", duplicate=0))
-
-# Add tensorflow third party
-#group.extend(SConscript(os.path.join(SIFLI_SDK,'../third_party/SConscript'), variant_dir="third_party", duplicate=0))
+group.extend(SConscript(os.path.join(cwd,'../../SConscript'),variant_dir="tflite", duplicate=0))
 
 # Add SDK
 group.extend(SConscript(os.path.join(SIFLI_SDK, 'SConscript'), variant_dir="sifli_sdk", duplicate=0))

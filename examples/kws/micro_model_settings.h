@@ -24,7 +24,7 @@ constexpr int kFeatureCount = 49;
 constexpr int kFeatureElementCount = (kFeatureSize * kFeatureCount);
 constexpr int kFeatureStrideMs = 20;
 constexpr int kFeatureDurationMs = 40;
-constexpr int kFeatureThreshold=0.5f;
+constexpr float kFeatureThreshold=0.5f;
 
 // Variables for the model's output categories.
 constexpr int kCategoryCount = 12;
