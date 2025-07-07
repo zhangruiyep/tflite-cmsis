@@ -13,6 +13,7 @@ Ported examples
 * micro_speech    
 * network_tester  
 * person_detection
+* kws (Keyword Spotting)
 
 To compile, please setup SiFli SDK first, 
 refer to https://docs.sifli.com/projects/sdk/latest/sf32lb52x/quickstart/install/script/index.html
