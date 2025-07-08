@@ -1,0 +1,15 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+objs = []
+list = os.listdir(cwd)
+Import('SIFLI_SDK')
+
+# Add application common code
+objs.extend(SConscript(cwd+'/../../common/SConscript', variant_dir="common", duplicate=0))
+
+# Add application code
+objs.extend(SConscript(cwd+'/../src/SConscript', variant_dir="speech_recognition", duplicate=0))
+
+Return('objs')

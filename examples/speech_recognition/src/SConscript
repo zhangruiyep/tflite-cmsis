@@ -1,0 +1,16 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+# Add source code
+src = Glob('*.cpp')
+src += Glob('models/*.cc')
+src += Glob('testdata/*.cc')
+inc = [cwd, cwd+'/../include']
+
+CPPDEFINES = ['CMSIS_DEVICE_ARM_CORTEX_M_XX_HEADER_FILE=\"<register.h>\"', 'CMSIS_NN', 'ARM_MATH_LOOPUNROLL']
+
+group = DefineGroup('Applications', src, depend = [''], CPPPATH = inc, CPPDEFINES=CPPDEFINES)
+
+Return('group')
