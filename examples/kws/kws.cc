@@ -268,9 +268,10 @@ static int kws_record_callback(audio_server_callback_cmt_t cmd, void *callback_u
             }
             else
             {
-                //reserved 10ms data before vad detected
-                memcpy(&thiz->data[0], p->data, p->data_len);
-                thiz->offset = p->data_len;
+                //reserved 100ms data before vad detected
+                memcpy(&thiz->data[0], &thiz->data[320], 320 * 9);
+                memcpy(&thiz->data[320 * 9], p->data, 320);
+                thiz->offset = 320 * 10;
             }
         }
     }
@@ -283,6 +284,7 @@ static kws_handle_t * kws_open()
     RT_ASSERT(!thiz);
     thiz = (kws_handle_t *)rt_malloc(sizeof(kws_handle_t));
     RT_ASSERT(thiz);
+    memset(thiz, 0 , sizeof(kws_handle_t));
     thiz->offset = 0;
     thiz->event = rt_event_create("kws", RT_IPC_FLAG_FIFO);
     RT_ASSERT(thiz->event);
@@ -338,6 +340,7 @@ while (test_using_mic)
     rt_uint32_t evt = 0;
     rt_event_recv(thiz->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
     TestAudioSample("yes", (const int16_t*)&thiz->data[0], MIC_1000MS_DATA_BYTES / 2);
+    memset(&thiz->data[0], 0, MIC_1000MS_DATA_BYTES);
     thiz->is_vad_started = 0;
 }
 kws_close();
