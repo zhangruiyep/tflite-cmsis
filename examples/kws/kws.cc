@@ -219,6 +219,7 @@ TfLiteStatus TestAudioSample(const char* label, const int16_t* audio_data,
 
 #include <audio_server.h>
 #include "webrtc/common_audio/vad/include/webrtc_vad.h"
+extern "C" void mic_gain_decrease(int8_t db);
 
 
 #define MIC_1000MS_DATA_BYTES       (16000 * 2)
@@ -293,7 +294,7 @@ static kws_handle_t * kws_open()
     RT_ASSERT(!ret);
     ret = WebRtcVad_Init(thiz->vad);
     RT_ASSERT(!ret);
-    ret = WebRtcVad_set_mode(thiz->vad, 1); // 0 ~ 3
+    ret = WebRtcVad_set_mode(thiz->vad, 3); // 0 ~ 3
     RT_ASSERT(!ret);
 
     audio_parameter_t pa = {0};
@@ -309,6 +310,8 @@ static kws_handle_t * kws_open()
     thiz->client = audio_open(AUDIO_TYPE_LOCAL_RECORD, AUDIO_RX, &pa, kws_record_callback, (void *)NULL);
     RT_ASSERT(thiz->client);
     MicroPrintf("kws_open done");
+    
+    mic_gain_decrease(4);
     return thiz;
 }
 static void kws_close()
