@@ -122,13 +122,25 @@ TfLiteStatus GenerateFeatures(const int16_t* data,
 
 TfLiteStatus LoadMicroSpeechModel(    )
 {
-    const tflite::Model* model =
-    tflite::GetModel(g_micro_speech_quantized_model_data);
-    tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize);
-    MicroPrintf("kws model arena size = %u", interpreter->arena_used_bytes());
-    g_interpreter=interpreter;
+    const tflite::Model* model = tflite::GetModel(g_micro_speech_quantized_model_data);
+
+    TfLiteStatus r=RegisterOps(op_resolver);
+
+    if (kTfLiteOk!=r)
+        MicroPrintf("Could not Register OPs: %d.", r);
+    else {    
+        tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize);
+        r=interpreter->AllocateTensors();
+        if (kTfLiteOk!=r) {
+            MicroPrintf("Could not Allocate tensors: %d.", r);
+        }
+        else {
+            MicroPrintf("kws model arena size = %u", interpreter->arena_used_bytes());
+            g_interpreter=interpreter;
+        }
+    }
     
-    return kTfLiteOk;
+    return r;
 }
 
 
@@ -144,6 +156,7 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
 {
     TfLiteTensor* input = g_interpreter->input(0);
     TfLiteTensor* output = g_interpreter->output(0);
+    TfLiteStatus r;
 
     Features m_features;
     GenerateFeatures(audio_data, audio_data_size, input->params.scale, input->params.zero_point, &m_features);
@@ -152,24 +165,32 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
     int output_zero_point = output->params.zero_point;
     std::copy_n(&m_features[0][0], kFeatureElementCount,
               tflite::GetTensorData<int8_t>(input));
-
-    // Dequantize output values
-    float category_predictions[kCategoryCount];
-    for (int i = 0; i < kCategoryCount; i++) {
-        category_predictions[i] =
-            (tflite::GetTensorData<int8_t>(output)[i] - output_zero_point) *
-            output_scale;
-        MicroPrintf("  %.4f %s", static_cast<double>(category_predictions[i]),
-                    kCategoryLabels[i]);
+    
+    r=g_interpreter->Invoke();
+    if (kTfLiteOk!=r) {
+        MicroPrintf("Invoke Model failed: %d", r);
+        return "Error";
     }
-    int prediction_index =
-         std::distance(std::begin(category_predictions),
-                        std::max_element(std::begin(category_predictions),
-                                         std::end(category_predictions)));
-    if (category_predictions[prediction_index] < kFeatureThreshold)
-        prediction_index=kLabelUnknownIdx;
-    return kCategoryLabels[prediction_index];
-
+    else {
+        // Dequantize output values
+        float category_predictions[kCategoryCount];
+        for (int i = 0; i < kCategoryCount; i++) {
+            category_predictions[i] =
+                (tflite::GetTensorData<int8_t>(output)[i] - output_zero_point) *
+                output_scale;
+#if 0
+            MicroPrintf("  %.4f %s", static_cast<double>(category_predictions[i]),
+                        kCategoryLabels[i]);
+#endif            
+        }
+        int prediction_index =
+             std::distance(std::begin(category_predictions),
+                            std::max_element(std::begin(category_predictions),
+                                             std::end(category_predictions)));
+        if (category_predictions[prediction_index] < kFeatureThreshold)
+            prediction_index=kLabelUnknownIdx;
+        return kCategoryLabels[prediction_index];
+    }
 }
 
 TfLiteStatus PerformInferenceAndCheck(
@@ -309,14 +330,15 @@ extern "C" int tf_main(int argc, char* argv[])
     LoadMicroSpeechModel();
 
     kws_open();
+    MicroPrintf("please speaking\n");
     while (1)
     {
         const char * label;
-        MicroPrintf("please speaking\n");
         rt_uint32_t evt = 0;
         rt_event_recv(thiz->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
         label=PerformInference((const int16_t*)&thiz->data[0], MIC_1000MS_DATA_BYTES / 2);
-        MicroPrintf("Result:%s", label);
+        if (strcmp(label,"unknown")!=0 && strcmp(label,"silence")!=0 )
+            MicroPrintf("Result:%s", label);
         memset(&thiz->data[0], 0, MIC_1000MS_DATA_BYTES);
         thiz->is_vad_started = 0;
     }
