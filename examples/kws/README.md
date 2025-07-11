@@ -25,3 +25,8 @@ The following commands show how to compile and run test on a sf32lb52x board :
 * scons --board=sf32lb52-lcd_n16r8
 * .\build_sf32lb52-lcd_n16r8_hcpu\uart_download.bat
 ```
+
+If microphone on board is used, please Add 
+CONFIG_KWS_MIC_SUPPORT=y
+to the end of 
+examples/kws/project/proj.conf

@@ -10,4 +10,7 @@ config CUSTOM_MEM_MAP
 
 config TF_MAIN_STACK_SIZE    
     int "TFLM main stack size"
-	default 131072
+	default 131072
+config KWS_MIC_SUPPORT
+    bool "TFLM Microphone support"
+    default n

@@ -34,8 +34,6 @@ extern "C" int tf_main(int argc, char * argv [ ]);
 #define main tf_main
 #include "tensorflow/lite/micro/testing/micro_test.h"
 
-namespace {
-
 // Arena size is a guesstimate, followed by use of
 // MicroInterpreter::arena_used_bytes() on both the AudioPreprocessor and
 // MicroSpeech models and using the larger of the two results.
@@ -52,13 +50,17 @@ constexpr int kAudioSampleStrideCount =
     kFeatureStrideMs * kAudioSampleFrequency / 1000;
 
 using MicroSpeechOpResolver = tflite::MicroMutableOpResolver<6>;
-using AudioPreprocessorOpResolver = tflite::MicroMutableOpResolver<19>;
 
 static tflite::MicroInterpreter * g_interpreter;
+
+#include "tensorflow/lite/micro/micro_profiler.h"
+tflite::MicroProfiler profiler;
+
 static MicroSpeechOpResolver op_resolver;
 
 
-TfLiteStatus RegisterOps(MicroSpeechOpResolver& op_resolver) {
+TfLiteStatus RegisterOps(MicroSpeechOpResolver& op_resolver) 
+{
   TF_LITE_ENSURE_STATUS(op_resolver.AddReshape());
   TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
   TF_LITE_ENSURE_STATUS(op_resolver.AddDepthwiseConv2D());
@@ -129,7 +131,7 @@ TfLiteStatus LoadMicroSpeechModel(    )
     if (kTfLiteOk!=r)
         MicroPrintf("Could not Register OPs: %d.", r);
     else {    
-        tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize);
+        tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize, NULL, &profiler);
         r=interpreter->AllocateTensors();
         if (kTfLiteOk!=r) {
             MicroPrintf("Could not Allocate tensors: %d.", r);
@@ -160,7 +162,10 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
 
     Features m_features;
     GenerateFeatures(audio_data, audio_data_size, input->params.scale, input->params.zero_point, &m_features);
-
+    
+#ifndef KWS_MIC_SUPPORT    
+    MicroPrintf("Feture generated");
+#endif
     float output_scale = output->params.scale;
     int output_zero_point = output->params.zero_point;
     std::copy_n(&m_features[0][0], kFeatureElementCount,
@@ -178,7 +183,7 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
             category_predictions[i] =
                 (tflite::GetTensorData<int8_t>(output)[i] - output_zero_point) *
                 output_scale;
-#if 0
+#ifndef KWS_MIC_SUPPORT    
             MicroPrintf("  %.4f %s", static_cast<double>(category_predictions[i]),
                         kCategoryLabels[i]);
 #endif            
@@ -210,10 +215,6 @@ TfLiteStatus TestAudioSample(const char* label, const int16_t* audio_data,
       PerformInferenceAndCheck(audio_data, audio_data_size,  label));
   return kTfLiteOk;
 }
-
-}  // namespace
-
-#define KWS_MIC_SUPPORT
 
 #ifdef KWS_MIC_SUPPORT
 
@@ -352,6 +353,11 @@ extern "C" int tf_main(int argc, char* argv[])
 
 TF_LITE_MICRO_TESTS_BEGIN
 
+
+TF_LITE_MICRO_TEST(Init) {
+  LoadMicroSpeechModel();
+}
+
 TF_LITE_MICRO_TEST(NoTest) {
   TestAudioSample("no", g_no_1000ms_audio_data, g_no_1000ms_audio_data_size);
 }
@@ -369,6 +375,8 @@ TF_LITE_MICRO_TEST(NoiseTest) {
   TestAudioSample("unknown", g_noise_1000ms_audio_data,
                   g_noise_1000ms_audio_data_size);
 }
+
+profiler.LogTicksPerTagCsv();
 
 TF_LITE_MICRO_TEST(DeInit) {
   UnloadModel();
