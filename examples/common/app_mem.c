@@ -99,7 +99,9 @@ void tf_rt_log(const char* s)
 
 struct rt_thread tf_thread;
 
-int main(int argc, char* argv[]) 
+extern void tflm_ui_task(void *args);
+
+int main(int argc, char* argv[])
 {
     void *tf_stack=cxx_mem_allocate(TF_MAIN_STACK_SIZE);
 
@@ -109,6 +111,12 @@ int main(int argc, char* argv[])
     g_argv=(char**)argv;
     rt_thread_init(&tf_thread, "tfmain", tf_main_entry, NULL, tf_stack, TF_MAIN_STACK_SIZE, RT_THREAD_PRIORITY_MIDDLE, 10);
     rt_thread_startup(&tf_thread);
+
+    rt_thread_t ui_thread = rt_thread_create("ui", tflm_ui_task, NULL, 4096, RT_THREAD_PRIORITY_LOW, 10);
+    if (ui_thread != RT_NULL)
+    {
+        rt_thread_startup(ui_thread);
+    }
     while (1)
     {
         rt_thread_mdelay(5000);

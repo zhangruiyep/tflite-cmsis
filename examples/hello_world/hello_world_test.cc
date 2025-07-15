@@ -14,6 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include <math.h>
+#include <rtthread.h>
 
 #include "tensorflow/lite/core/c/common.h"
 #include "models/hello_world_float_model_data.h"
@@ -149,11 +150,63 @@ TfLiteStatus LoadQuantModelAndPerformInference() {
   return kTfLiteOk;
 }
 
+/* custom float model test, never return */
+extern "C" void tflm_ui_refresh(float x, float y, float y_pred);
+TfLiteStatus LoadFloatModelAndLoop() {
+  const tflite::Model* model =
+      ::tflite::GetModel(g_hello_world_float_model_data);
+  TFLITE_CHECK_EQ(model->version(), TFLITE_SCHEMA_VERSION);
+
+  HelloWorldOpResolver op_resolver;
+  TF_LITE_ENSURE_STATUS(RegisterOps(op_resolver));
+
+  // Arena size just a round number. The exact arena usage can be determined
+  // using the RecordingMicroInterpreter.
+  constexpr int kTensorArenaSize = 3000;
+  uint8_t tensor_arena[kTensorArenaSize];
+
+  tflite::MicroInterpreter interpreter(model, op_resolver, tensor_arena,
+                                       kTensorArenaSize);
+  TF_LITE_ENSURE_STATUS(interpreter.AllocateTensors());
+
+#if 0
+  // Check if the predicted output is within a small range of the
+  // expected output
+  float epsilon = 0.05f;
+  constexpr int kNumTestValues = 4;
+  float golden_inputs[kNumTestValues] = {0.f, 1.f, 3.f, 5.f};
+
+  for (int i = 0; i < kNumTestValues; ++i) {
+    interpreter.input(0)->data.f[0] = golden_inputs[i];
+    TF_LITE_ENSURE_STATUS(interpreter.Invoke());
+    float y_pred = interpreter.output(0)->data.f[0];
+    TFLITE_CHECK_LE(abs(sin(golden_inputs[i]) - y_pred), epsilon);
+  }
+#endif
+    /* init rand */
+  srand(time(NULL));
+  while (1)
+  {
+    float x = (float)rand()/RAND_MAX * 3.1415926 * 2;
+    interpreter.input(0)->data.f[0] = x;
+    TF_LITE_ENSURE_STATUS(interpreter.Invoke());
+    float y_pred = interpreter.output(0)->data.f[0];
+    float y = sin(x);
+    float delta = y - y_pred;
+    //rt_kprintf("x: %f\ny: %f\ny_pred: %f\ndelta: %f\n", x, y, y_pred, delta);
+    tflm_ui_refresh(x, y, y_pred);
+    rt_thread_mdelay(100);
+  }
+
+  return kTfLiteOk;
+}
+
 extern "C" int tf_main(int argc, char* argv[]) {
   tflite::InitializeTarget();
   TF_LITE_ENSURE_STATUS(ProfileMemoryAndLatency());
   TF_LITE_ENSURE_STATUS(LoadFloatModelAndPerformInference());
   TF_LITE_ENSURE_STATUS(LoadQuantModelAndPerformInference());
   MicroPrintf("~~~ALL TESTS PASSED~~~\n");
+  TF_LITE_ENSURE_STATUS(LoadFloatModelAndLoop());
   return kTfLiteOk;
 }
