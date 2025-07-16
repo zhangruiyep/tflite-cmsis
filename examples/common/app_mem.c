@@ -112,11 +112,13 @@ int main(int argc, char* argv[])
     rt_thread_init(&tf_thread, "tfmain", tf_main_entry, NULL, tf_stack, TF_MAIN_STACK_SIZE, RT_THREAD_PRIORITY_MIDDLE, 10);
     rt_thread_startup(&tf_thread);
 
+#if 0
     rt_thread_t ui_thread = rt_thread_create("ui", tflm_ui_task, NULL, 4096, RT_THREAD_PRIORITY_LOW, 10);
     if (ui_thread != RT_NULL)
     {
         rt_thread_startup(ui_thread);
     }
+#endif
     while (1)
     {
         rt_thread_mdelay(5000);

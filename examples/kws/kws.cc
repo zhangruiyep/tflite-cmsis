@@ -128,7 +128,7 @@ TfLiteStatus LoadMicroSpeechModel(    )
 
     if (kTfLiteOk!=r)
         MicroPrintf("Could not Register OPs: %d.", r);
-    else {    
+    else {
         tflite::MicroInterpreter *interpreter=new tflite::MicroInterpreter(model, op_resolver, g_arena, kArenaSize);
         r=interpreter->AllocateTensors();
         if (kTfLiteOk!=r) {
@@ -139,7 +139,7 @@ TfLiteStatus LoadMicroSpeechModel(    )
             g_interpreter=interpreter;
         }
     }
-    
+
     return r;
 }
 
@@ -165,7 +165,7 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
     int output_zero_point = output->params.zero_point;
     std::copy_n(&m_features[0][0], kFeatureElementCount,
               tflite::GetTensorData<int8_t>(input));
-    
+
     r=g_interpreter->Invoke();
     if (kTfLiteOk!=r) {
         MicroPrintf("Invoke Model failed: %d", r);
@@ -181,7 +181,7 @@ const char* PerformInference(const int16_t* audio_data, const size_t audio_data_
 #if 0
             MicroPrintf("  %.4f %s", static_cast<double>(category_predictions[i]),
                         kCategoryLabels[i]);
-#endif            
+#endif
         }
         int prediction_index =
              std::distance(std::begin(category_predictions),
@@ -197,7 +197,7 @@ TfLiteStatus PerformInferenceAndCheck(
     const int16_t* audio_data, const size_t audio_data_size, const char* expected_label)
 {
     const char * label;
-    
+
     MicroPrintf("MicroSpeech category predictions for <%s>", expected_label);
     label=PerformInference(audio_data, audio_data_size);
     TF_LITE_MICRO_EXPECT_STRING_EQ(expected_label,label);
@@ -217,8 +217,11 @@ TfLiteStatus TestAudioSample(const char* label, const int16_t* audio_data,
 
 #ifdef KWS_MIC_SUPPORT
 
+extern "C"
+{
 #include <audio_server.h>
 #include "webrtc/common_audio/vad/include/webrtc_vad.h"
+}
 extern "C" void mic_gain_decrease(int8_t db);
 
 
@@ -310,8 +313,8 @@ static kws_handle_t * kws_open()
     thiz->client = audio_open(AUDIO_TYPE_LOCAL_RECORD, AUDIO_RX, &pa, kws_record_callback, (void *)NULL);
     RT_ASSERT(thiz->client);
     MicroPrintf("kws_open done");
-    
-    mic_gain_decrease(4);
+
+    //mic_gain_decrease(4);
     return thiz;
 }
 static void kws_close()
@@ -328,7 +331,7 @@ static void kws_close()
     thiz = NULL;
 }
 
-extern "C" int tf_main(int argc, char* argv[]) 
+extern "C" int tf_main(int argc, char* argv[])
 {
     LoadMicroSpeechModel();
 
@@ -346,7 +349,7 @@ extern "C" int tf_main(int argc, char* argv[])
         thiz->is_vad_started = 0;
     }
     kws_close();
-}    
+}
 
 #else
 
