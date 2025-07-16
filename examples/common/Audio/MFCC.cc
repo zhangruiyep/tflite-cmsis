@@ -247,23 +247,6 @@ void MFCC::MfccComputePreFeature(const std::vector<float>& audioData)
     auto size = std::min(std::min(this->m_frame.size(), audioData.size()),
                          static_cast<size_t>(this->m_params.m_frameLen)) * sizeof(float);
     /* Compute FFT. */
-#ifdef ARM_DSP
-    static float temp_frame[1024];
-
-    std::memcpy(temp_frame, audioData.data(), size);    
-
-    /* Apply window function to input frame. */
-    arm_mult_f32(temp_frame, this->m_windowFunc.data(), temp_frame, this->m_params.m_frameLen);
-
-    /* Set remaining frame values to 0. */
-    memset(&(temp_frame[this->m_params.m_frameLen]), 0, 
-        this->m_params.m_frameLenPadded*sizeof(float32_t)-size);    
-    
-    arm_rfft_fast_f32(rfft, 
-        temp_frame,
-        const_cast<float32_t*>(this->m_buffer.data()),
-        0);
-#else    
     std::memcpy(this->m_frame.data(), audioData.data(), size);
 
     /* Apply window function to input frame. */
@@ -274,11 +257,17 @@ void MFCC::MfccComputePreFeature(const std::vector<float>& audioData)
     /* Set remaining frame values to 0. */
     std::fill(this->m_frame.begin() + this->m_params.m_frameLen,this->m_frame.end(), 0);
 
+#ifdef ARM_DSP
+    arm_rfft_fast_f32(rfft, 
+        this->m_frame.data(),
+        const_cast<float32_t*>(this->m_buffer.data()),
+        0);    
+#else    
     MathUtils::FftF32(this->m_frame, this->m_buffer);
-    MicroPrintf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", 
-        this->m_buffer[0],this->m_buffer[1],this->m_buffer[2],this->m_buffer[3] , this->m_buffer[4], 
-        this->m_buffer[5],this->m_buffer[6],this->m_buffer[7],this->m_buffer[8] , this->m_buffer[9]);
 #endif
+    //MicroPrintf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", 
+    //    this->m_buffer[0],this->m_buffer[1],this->m_buffer[2],this->m_buffer[3] , this->m_buffer[4], 
+    //    this->m_buffer[5],this->m_buffer[6],this->m_buffer[7],this->m_buffer[8] , this->m_buffer[9]);
 
     /* Convert to power spectrum. */
     this->ConvertToPowerSpectrum();
